@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预测结果</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        /* General Body Styling */
+        body {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(0, 128, 255, 0.5));
+            background-size: cover;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: #333;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* Container Styling */
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        /* Heading Styling */
+        h1 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        /* Results Overview */
+        .results-overview {
+            background: rgba(76, 175, 80, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(76, 175, 80, 0.2);
+        }
+
+        .results-overview h2 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .prediction-type {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        /* Bird Results Grid */
+        .bird-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        /* Individual Bird Card */
+        .bird-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e0e0e0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .bird-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .bird-card h3 {
+            color: #4CAF50;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid rgba(76, 175, 80, 0.3);
+            padding-bottom: 10px;
+        }
+
+        /* Confidence Display */
+        .confidence-display {
+            margin-bottom: 20px;
+        }
+
+        .confidence-bar {
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            height: 25px;
+            position: relative;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+
+        .confidence-fill.high {
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+        }
+
+        .confidence-fill.medium {
+            background: linear-gradient(90deg, #FF9800, #F57C00);
+        }
+
+        .confidence-fill.low {
+            background: linear-gradient(90deg, #FF5722, #E64A19);
+        }
+
+        .confidence-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+            z-index: 1;
+        }
+
+        /* Bird Image */
+        .bird-image {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 15px;
+            margin: 15px 0;
+            transition: transform 0.3s ease;
+        }
+
+        .bird-image:hover {
+            transform: scale(1.05);
+        }
+
+        /* Description */
+        .bird-description {
+            font-size: 1.1em;
+            line-height: 1.6em;
+            margin: 15px 0;
+            color: #555;
+            text-align: left;
+        }
+
+        /* Audio Player */
+        .audio-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(76, 175, 80, 0.05);
+            border-radius: 10px;
+        }
+
+        .audio-section h4 {
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+
+        audio {
+            width: 100%;
+            outline: none;
+            border-radius: 10px;
+        }
+
+        /* Links Section */
+        .links-section {
+            text-align: left;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(76, 175, 80, 0.05);
+            border-radius: 10px;
+        }
+
+        .links-section h4 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .links-section a {
+            display: block;
+            margin: 8px 0;
+            color: #2196F3;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .links-section a:hover {
+            color: #1976D2;
+            text-decoration: underline;
+        }
+
+        /* Button Styling */
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.2em;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin: 10px 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            background-color: #3e8e41;
+            transform: scale(1);
+        }
+
+        /* File Info */
+        .file-info {
+            background: rgba(76, 175, 80, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .bird-results {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .bird-card {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .btn {
+                margin: 5px;
+                padding: 12px 25px;
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>识别结果</h1>
+
+        <!-- Results Overview -->
+        <div class="results-overview">
+            <h2>识别概览</h2>
+            {% if is_multi_label %}
+                <div class="prediction-type">多标签识别结果 - 检测到 {{ bird_results|length }} 种鸟类</div>
+            {% else %}
+                <div class="prediction-type">单标签识别结果</div>
+            {% endif %}
+        </div>
+
+        <!-- File Information -->
+        {% if filename %}
+        <div class="file-info">
+            <strong>已上传文件：</strong> {{ filename }}
+        </div>
+        {% endif %}
+
+        <!-- Bird Results -->
+        <div class="bird-results">
+            {% for result in bird_results %}
+            <div class="bird-card">
+                <h3>{{ result.species }}</h3>
+
+                {% if result.confidence %}
+                <!-- Confidence Display -->
+                <div class="confidence-display">
+                    <div class="confidence-bar">
+                        <div class="confidence-fill {% if result.confidence > 70 %}high{% elif result.confidence > 50 %}medium{% else %}low{% endif %}"
+                             style="width: {{ result.confidence }}%">
+                            <div class="confidence-text">{{ "%.1f"|format(result.confidence) }}%</div>
+                        </div>
+                    </div>
+                    <p>
+                        {% if result.confidence > 70 %}
+                            <strong style="color: #4CAF50;">高置信度</strong> - 很可能存在此鸟类
+                        {% elif result.confidence > 50 %}
+                            <strong style="color: #FF9800;">中等置信度</strong> - 可能存在此鸟类
+                        {% else %}
+                            <strong style="color: #FF5722;">低置信度</strong> - 仅供参考
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Bird Image -->
+                {% if result.image %}
+                <img class="bird-image" src="{{ url_for('static', filename=result.image) }}" alt="{{ result.species }}图片">
+                {% endif %}
+
+                <!-- Bird Description -->
+                {% if result.description %}
+                <div class="bird-description">
+                    <strong>简介：</strong> {{ result.description }}
+                </div>
+                {% endif %}
+
+                <!-- Audio Section -->
+                {% if result.sound %}
+                <div class="audio-section">
+                    <h4>{{ result.species }}鸣叫声</h4>
+                    <audio controls>
+                        <source src="{{ url_for('static', filename=result.sound) }}" type="audio/wav">
+                        您的浏览器不支持音频播放。
+                    </audio>
+                </div>
+                {% endif %}
+
+                <!-- Links Section -->
+                <div class="links-section">
+                    <h4>了解更多：</h4>
+                    <a href="https://baike.baidu.com/item/{{ result.species }}" target="_blank">
+                        百度百科：{{ result.species }}
+                    </a>
+                    <a href="https://zh.wikipedia.org/wiki/{{ result.species }}" target="_blank">
+                        维基百科：{{ result.species }}
+                    </a>
+                    <a href="https://www.google.com/search?q={{ result.species }} 鸟" target="_blank">
+                        Google 搜索：{{ result.species }}
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="/welcome" class="btn">返回首页</a>
+            <a href="/index" class="btn">继续识别</a>
+        </div>
+    </div>
+
+    <script>
+        // Add entrance animation for bird cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const birdCards = document.querySelectorAll('.bird-card');
+            birdCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 200);
+            });
+        });
+
+        // Animate confidence bars
+        window.addEventListener('load', function() {
+            const confidenceFills = document.querySelectorAll('.confidence-fill');
+            confidenceFills.forEach((fill, index) => {
+                const targetWidth = fill.style.width;
+                fill.style.width = '0%';
+
+                setTimeout(() => {
+                    fill.style.width = targetWidth;
+                }, 500 + index * 200);
+            });
+        });
+    </script>
+</body>
+</html>

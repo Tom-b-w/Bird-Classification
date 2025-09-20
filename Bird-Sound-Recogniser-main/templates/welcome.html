@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鸟鸣识别</title>
+    <style>
+        /* 页面基础样式 */
+        body {
+            background: url("{{ url_for('static', filename='images/bg_main.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: "Microsoft YaHei", sans-serif;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 半透明遮罩层增强可读性 */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+        }
+
+        /* 按钮容器 */
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* 按钮样式 */
+        .button {
+            display: inline-block;
+            padding: 15px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            border: none;
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transition: all 0.6s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 各个按钮的颜色 */
+        .button.identify {
+            background: linear-gradient(135deg, #ff5722, #ff7043);
+        }
+
+        .button.synthesize {
+            background: linear-gradient(135deg, #3f51b5, #5c6bc0);
+        }
+
+        .button.map {
+            background: linear-gradient(135deg, #009688, #26a69a);
+        }
+
+        .button.game {
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            animation: gameButtonPulse 2s ease-in-out infinite;
+        }
+
+        /* 游戏按钮特殊动画 */
+        @keyframes gameButtonPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 6px 15px rgba(255, 152, 0, 0.4);
+            }
+        }
+
+        .button.game:hover {
+            animation: none;
+            transform: translateY(-3px) scale(1.05);
+        }
+
+        /* 诗句样式 */
+        .poem {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: opacity 1s ease-out, transform 1s ease-out;
+            pointer-events: none;
+            font-weight: bold;
+            z-index: 10;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 36px;
+                margin-bottom: 20px;
+            }
+
+            .button-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .button {
+                padding: 12px 20px;
+                font-size: 16px;
+                min-width: 200px;
+            }
+
+            .poem {
+                font-size: 18px;
+                max-width: 80%;
+                white-space: normal;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 28px;
+            }
+
+            .button {
+                padding: 10px 18px;
+                font-size: 14px;
+                min-width: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    <h1>处处闻啼鸟————鸟鸣开发平台</h1>
+    <div class="button-container">
+        <a href="{{ url_for('index') }}" class="button identify" target="_blank">识别GO</a>
+        <a href="{{ url_for('synthesize') }}" class="button synthesize" target="_blank">合成GO</a>
+        <a href="{{ url_for('map_page') }}" class="button map" target="_blank">地图GO</a>
+        <a href="{{ url_for('bird_game') }}" class="button game">趣味游戏GO</a>
+    </div>
+
+    <script>
+        const poems = [
+            "两个黄鹂鸣翠柳，一行白鹭上青天。",
+            "月出惊山鸟，时鸣春涧中。",
+            "千山鸟飞绝，万径人踪灭。",
+            "感时花溅泪，恨别鸟惊心。",
+            "留连戏蝶时时舞，自在娇莺恰恰啼。",
+            "山气日夕佳，飞鸟相与还。",
+            "众鸟高飞尽，孤云独去闲。",
+            "鸟宿池边树，僧敲月下门。",
+            "几处早莺争暖树，谁家新燕啄春泥。",
+            "孤云将野鹤，岂向人间住。",
+            "蝉噪林逾静，鸟鸣山更幽。",
+            "白发悲花落，青云羡鸟飞。",
+            "鸟向平芜远近，人随流水东西。",
+            "落花人独立，微雨燕双飞。",
+            "芳树无人花自落，春山一路鸟空啼。",
+            "春眠不觉晓，处处闻啼鸟。",
+            "江碧鸟逾白，山青花欲燃。",
+            "风翻白浪涌，雨骤群鸟喧。",
+            "飘飘何所似，天地一沙鸥。",
+            "池塘生春草，园柳变鸣禽。",
+            "草长莺飞二月天，拂堤杨柳醉春烟。"
+        ];
+
+        let shownIndices = [];
+
+        function getRandomPoem() {
+            if (shownIndices.length === poems.length) {
+                shownIndices = [];
+            }
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * poems.length);
+            } while (shownIndices.includes(randomIndex));
+            shownIndices.push(randomIndex);
+            return poems[randomIndex];
+        }
+
+        function showPoem(event) {
+            if (event.target.classList.contains('button') || event.target.closest('.button')) {
+                return;
+            }
+
+            const poemElement = document.createElement('div');
+            poemElement.className = 'poem';
+            document.body.appendChild(poemElement);
+
+            const randomPoem = getRandomPoem();
+
+            const hue = Math.floor(Math.random() * 360);
+            poemElement.style.color = `hsl(${hue}, 80%, 70%)`;
+
+            // 确保诗句在屏幕范围内
+            const maxWidth = window.innerWidth - 200;
+            const maxHeight = window.innerHeight - 100;
+
+            let x = Math.max(100, Math.min(event.clientX, maxWidth));
+            let y = Math.max(50, Math.min(event.clientY, maxHeight));
+
+            poemElement.style.left = `${x}px`;
+            poemElement.style.top = `${y}px`;
+
+            poemElement.textContent = randomPoem;
+            poemElement.style.opacity = '1';
+            poemElement.style.transform = 'translateY(-10px) scale(1.1)';
+
+            setTimeout(() => {
+                poemElement.style.opacity = '0';
+                poemElement.style.transform = 'translateY(20px) scale(0.9)';
+            }, 1000);
+
+            setTimeout(() => {
+                if (document.body.contains(poemElement)) {
+                    document.body.removeChild(poemElement);
+                }
+            }, 2000);
+        }
+
+        // 游戏按钮点击特效
+        function addGameButtonEffect() {
+            const gameButton = document.querySelector('.button.game');
+
+            gameButton.addEventListener('click', function(e) {
+                // 创建点击波纹效果
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+
+                ripple.style.cssText = `
+                    position: absolute;
+                    left: ${x}px;
+                    top: ${y}px;
+                    width: ${size}px;
+                    height: ${size}px;
+                    border-radius: 50%;
+                    background: rgba(255,255,255,0.6);
+                    transform: scale(0);
+                    animation: gameRipple 0.6s ease-out;
+                    pointer-events: none;
+                `;
+
+                this.appendChild(ripple);
+
+                setTimeout(() => {
+                    if (this.contains(ripple)) {
+                        this.removeChild(ripple);
+                    }
+                }, 600);
+            });
+        }
+
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes gameRipple {
+                to {
+                    transform: scale(2);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            addGameButtonEffect();
+
+            // 为所有按钮添加悬停音效（可选）
+            const buttons = document.querySelectorAll('.button');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    // 可以在这里添加悬停音效
+                });
+            });
+        });
+
+        document.body.addEventListener('click', showPoem);
+    </script>
+</body>
+</html>

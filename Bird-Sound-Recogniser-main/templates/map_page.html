@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图页面</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .back-button, .input-button {
+            position: absolute;
+            top: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        .back-button {
+            left: 10px;
+        }
+        .input-button {
+            left: 140px;
+        }
+        .back-button:hover, .input-button:hover {
+            background-color: #45a049;
+        }
+        .info-box {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="returnToIndex()">返回首页</button>
+    <button class="input-button" onclick="redirectToInput()">录入鸟类信息</button>
+    <div class="info-box">🔴 红点：已有鸟类数据<br>📍 请点击地图选择一个点</div>
+    <div id="map"></div>
+
+    <!-- 引入高德地图API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=c90571151558c856fea49da9be485c44"></script>
+    <script>
+        let map;
+        let selectedLonLat = null;  // 存储用户点击的经纬度
+        let markerLayer = [];  // 用户点击的标记点
+        let birdDataLayer = []; // 记录鸟类数据点
+        let infoWindow; // 信息窗口
+
+        // 初始化地图
+        function initMap() {
+            map = new AMap.Map('map', {
+                zoom: 16,
+                center: [104.001815, 30.553159]
+            });
+
+            // 初始化信息窗口
+            infoWindow = new AMap.InfoWindow({
+                offset: new AMap.Pixel(0, -30),
+                closeWhenClickMap: true
+            });
+
+            // 加载鸟类数据
+            fetchBirdData();
+
+            // 监听用户点击地图
+            map.on('click', function(event) {
+                selectedLonLat = [event.lnglat.getLng(), event.lnglat.getLat()];
+
+                // 移除之前的标记
+                if (markerLayer.length > 0) {
+                    map.remove(markerLayer);
+                    markerLayer = [];
+                }
+
+                // 创建新的标记点（蓝色）
+                const marker = new AMap.Marker({
+                    position: event.lnglat,
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(20, 20),
+                        image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+                        imageSize: new AMap.Size(20, 20)
+                    }),
+                    offset: new AMap.Pixel(-10, -10)
+                });
+
+                marker.setMap(map);
+                markerLayer.push(marker);
+
+                // 弹出确认框
+                if (confirm(`选择位置：纬度 ${selectedLonLat[1]}，经度 ${selectedLonLat[0]}。\n点击确定录入鸟类信息。`)) {
+                    redirectToInput();
+                }
+            });
+        }
+
+        // 获取鸟类数据并添加红点
+        function fetchBirdData() {
+            fetch('/get_bird_data')
+                .then(response => response.json())
+                .then(data => {
+                    addBirdMarkers(data);
+                })
+                .catch(error => console.error('获取鸟类数据失败:', error));
+        }
+
+        // 在地图上添加鸟类数据点（红色）
+        function addBirdMarkers(birdData) {
+            birdData.forEach(spot => {
+                const marker = new AMap.Marker({
+                    position: [spot.lon, spot.lat],
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(20, 20),
+                        image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png',
+                        imageSize: new AMap.Size(20, 20)
+                    }),
+                    offset: new AMap.Pixel(-10, -10)
+                });
+
+                // 添加点击事件
+                marker.on('click', function(e) {
+                    infoWindow.setContent(`📍 此处有鸟类数据<br>纬度: ${spot.lat}<br>经度: ${spot.lon}`);
+                    infoWindow.open(map, marker.getPosition());
+
+                    // 点击已有数据的地方，跳转到信息录入页面并传递该数据
+                    if (confirm(`此位置已有鸟类数据，是否录入该数据？\n纬度: ${spot.lat}，经度: ${spot.lon}`)) {
+                        window.location.href = `/submit_bird_info_page?lat=${spot.lat}&lon=${spot.lon}&existing=true`;
+                    }
+                });
+
+                marker.setMap(map);
+                birdDataLayer.push(marker);
+            });
+        }
+
+        // 跳转到录入鸟类信息页面
+        function redirectToInput() {
+            if (!selectedLonLat) {
+                alert("请先点击地图选择位置！");
+                return;
+            }
+            window.location.href = `/submit_bird_info_page?lat=${selectedLonLat[1]}&lon=${selectedLonLat[0]}`;
+        }
+
+        // 返回首页
+        function returnToIndex() {
+            window.location.href = "/welcome";
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>

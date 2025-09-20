@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>用户登录与注册</title>
+    <style>
+        body {
+            background: url("{{ url_for('static', filename='images/bg_main.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            width: 400px;
+        }
+        h2 {
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .switch-form {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .switch-form span {
+            color: #007bff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 id="form-title">登录</h2>
+
+        <!-- 登录表单 -->
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-username">用户名:</label>
+                <input type="text" id="login-username" name="username" required />
+            </div>
+            <div class="form-group">
+                <label for="login-password">密码:</label>
+                <input type="password" id="login-password" name="password" required />
+            </div>
+            <div class="form-group">
+                <label for="captcha">验证码:</label>
+                <input type="text" id="captcha" name="captcha" required />
+                <img id="captcha-img" src="/captcha" alt="验证码" onclick="refreshCaptcha()" style="cursor: pointer;" />
+                <small>点击图片可刷新验证码</small>
+            </div>
+            <button type="submit">登录</button>
+        </form>
+
+        <!-- 注册表单 -->
+        <form id="register-form" style="display: none;">
+            <div class="form-group">
+                <label for="register-username">用户名:</label>
+                <input type="text" id="register-username" required />
+            </div>
+            <div class="form-group">
+                <label for="register-email">邮箱:</label>
+                <input type="email" id="register-email" required />
+            </div>
+            <div class="form-group">
+                <label for="register-password">密码:</label>
+                <input type="password" id="register-password" required />
+            </div>
+            <div class="form-group">
+                <label for="register-code">验证码:</label>
+                <input type="text" id="register-code" required />
+                <button type="button" id="send-code-btn" style="margin-top: 5px;">发送验证码</button>
+            </div>
+            <button type="submit">注册</button>
+        </form>
+
+        <div class="switch-form">
+            <span id="switch-to-register">没有账号？注册</span>
+            <span id="switch-to-login" style="display: none;">已有账号？登录</span>
+        </div>
+    </div>
+
+    <script>
+        function refreshCaptcha() {
+            document.getElementById('captcha-img').src = '/captcha?ts=' + Date.now();
+        }
+        async function submitForm(url, data) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+            if (response.ok && result.redirect) {
+                window.location.href = result.redirect;
+            }
+        }
+
+        // 登录提交
+        document.getElementById("login-form").addEventListener("submit", e => {
+            e.preventDefault();
+            submitForm("/login", {
+                username: document.getElementById("login-username").value,
+                password: document.getElementById("login-password").value,
+                captcha: document.getElementById("captcha").value
+            });
+        });
+
+        // 注册提交
+        document.getElementById("register-form").addEventListener("submit", e => {
+            e.preventDefault();
+            submitForm("/register", {
+                username: document.getElementById("register-username").value,
+                email: document.getElementById("register-email").value,
+                password: document.getElementById("register-password").value,
+                code: document.getElementById("register-code").value
+            }).then(result => {
+                // 清空表单
+                document.getElementById("register-username").value = "";
+                document.getElementById("register-email").value = "";
+                document.getElementById("register-password").value = "";
+                document.getElementById("register-code").value = "";
+
+                // 切换回登录
+                document.getElementById("register-form").style.display = "none";
+                document.getElementById("login-form").style.display = "block";
+                document.getElementById("form-title").textContent = "登录";
+                document.getElementById("switch-to-login").style.display = "none";
+                document.getElementById("switch-to-register").style.display = "inline";
+            });
+        });
+
+
+        // 发送验证码
+        document.getElementById("send-code-btn").addEventListener("click", async () => {
+            const email = document.getElementById("register-email").value;
+            if (!email) {
+                alert("请输入邮箱");
+                return;
+            }
+
+            const response = await fetch("/send_code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+        });
+
+        // 表单切换
+        document.getElementById("switch-to-register").addEventListener("click", () => {
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("register-form").style.display = "block";
+            document.getElementById("form-title").textContent = "注册";
+            document.getElementById("switch-to-register").style.display = "none";
+            document.getElementById("switch-to-login").style.display = "inline";
+        });
+
+        document.getElementById("switch-to-login").addEventListener("click", () => {
+            document.getElementById("register-form").style.display = "none";
+            document.getElementById("login-form").style.display = "block";
+            document.getElementById("form-title").textContent = "登录";
+            document.getElementById("switch-to-login").style.display = "none";
+            document.getElementById("switch-to-register").style.display = "inline";
+        });
+    </script>
+</body>
+</html>

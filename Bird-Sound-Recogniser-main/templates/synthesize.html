@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"/>
+    <title>鸟鸣合成与播放</title>
+    <style>
+        body {
+            background: url("{{ url_for('static', filename='images/bg_main.jpg') }}") no-repeat center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 30px 90px;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+            overflow: hidden;
+        }
+        #chat-box {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: white;
+        }
+        .user-message, .bot-message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .user-message {
+            background: #e3f2fd;
+            justify-content: flex-end;
+        }
+        .bot-message {
+            background: #f0f4c3;
+            justify-content: flex-start;
+        }
+        .user-message-content, .bot-message-content {
+            word-wrap: break-word;
+        }
+        .bot-avatar, .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 10px;
+            background-color: #4caf50;
+        }
+        .user-avatar {
+            margin-left: 10px;
+            background-color: #2196F3;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        textarea {
+            width: 80%;
+            font-size: 1.7em;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            resize: vertical;
+            max-height: 150px;
+            overflow: auto;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:hover {
+            border-color: #4caf50;
+        }
+
+        textarea:focus {
+            border: 2px dashed #4caf50;
+            outline: none;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:active {
+            background-color: #3e8e41;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Poem Styling */
+        .poem {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: opacity 1s ease-out, transform 1s ease-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>鸟鸣声合成</h1>
+    <div id="chat-box"></div>
+    <div class="input-group">
+        <textarea id="user-input" placeholder="输入描述（如：清晨的鸟鸣）（拉动右下角可调节高度）"></textarea>
+        <button onclick="sendMessage()">发送</button>
+    </div>
+    <audio id="audio-player" controls>
+        <source id="audio-source" type="audio/mp3">
+        您的浏览器不支持音频播放。
+    </audio>
+
+    <div class="button-container">
+        <button id="play-audio-button" disabled>播放音频</button>
+        <button onclick="returnToIndex()">返回首页</button>
+    </div>
+
+    <script>
+        // 准备30句与鸟相关的诗句
+        const poems = [
+            "两个黄鹂鸣翠柳，一行白鹭上青天。",
+            "月出惊山鸟，时鸣春涧中。",
+            "千山鸟飞绝，万径人踪灭。",
+            "感时花溅泪，恨别鸟惊心。",
+            "留连戏蝶时时舞，自在娇莺恰恰啼。",
+            "荡胸生曾云，决眦入归鸟。",
+            "山气日夕佳，飞鸟相与还。",
+            "众鸟高飞尽，孤云独去闲。",
+            "鸟宿池边树，僧敲月下门。",
+            "驱鸡上树木，始闻叩柴扉。",
+            "吊影分为千里雁，辞根散作九秋蓬。",
+            "几处早莺争暖树，谁家新燕啄春泥。",
+            "孤云将野鹤，岂向人间住。",
+            "蝉噪林逾静，鸟鸣山更幽。",
+            "白发悲花落，青云羡鸟飞。",
+            "鸟向平芜远近，人随流水东西。",
+            "落花人独立，微雨燕双飞。",
+            "芳树无人花自落，春山一路鸟空啼。",
+            "春眠不觉晓，处处闻啼鸟。",
+            "鸟宿池边树，僧敲月下门。",
+            "江碧鸟逾白，山青花欲燃。",
+            "感时花溅泪，恨别鸟惊心。",
+            "风翻白浪涌，雨骤群鸟喧。",
+            "众鸟高飞尽，孤云独去闲。",
+            "月出惊山鸟，时鸣春涧中。",
+            "千山鸟飞绝，万径人踪灭。",
+            "留连戏蝶时时舞，自在娇莺恰恰啼。",
+            "飘飘何所似，天地一沙鸥。",
+            "池塘生春草，园柳变鸣禽。",
+            "草长莺飞二月天，拂堤杨柳醉春烟。"
+        ];
+
+        // 已经显示过的诗句索引
+        let shownIndices = [];
+
+        // 随机选择未显示过的诗句
+        function getRandomPoem() {
+            if (shownIndices.length === poems.length) {
+                // 如果所有诗句都已显示过，重置
+                shownIndices = [];
+            }
+
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * poems.length);
+            } while (shownIndices.includes(randomIndex));
+
+            shownIndices.push(randomIndex);
+            return poems[randomIndex];
+        }
+
+        // 显示诗句并设置样式
+        function showPoem(event) {
+            // 检查是否点击在按钮、输入框或音频元素上
+            if (
+                event.target.tagName === "BUTTON" ||
+                event.target.tagName === "TEXTAREA" ||
+                event.target.tagName === "AUDIO" ||
+                event.target.type === "submit"
+            ) {
+                return;
+            }
+
+            // 创建一个新的div元素用于显示诗句
+            const poemElement = document.createElement("div");
+            poemElement.className = "poem";
+            document.body.appendChild(poemElement);
+
+            // 随机选择诗句
+            const randomPoem = getRandomPoem();
+
+            // 随机生成高饱和度的颜色
+            const hue = Math.floor(Math.random() * 360);
+            poemElement.style.color = `hsl(${hue}, 80%, 60%)`;
+
+            // 设置诗句位置为点击位置
+            poemElement.style.left = `${event.clientX}px`;
+            poemElement.style.top = `${event.clientY}px`;
+
+            // 显示诗句
+            poemElement.textContent = randomPoem;
+            poemElement.style.opacity = "1";
+            poemElement.style.transform = "translateY(0)";
+
+            // 0.9秒后开始消失动画
+            setTimeout(() => {
+                poemElement.style.opacity = "0";
+                poemElement.style.transform = "translateY(20px)";
+            }, 900);
+
+            // 动画结束后移除元素
+            setTimeout(() => {
+                document.body.removeChild(poemElement);
+            }, 1900);
+        }
+
+        // 绑定点击事件
+        document.body.addEventListener("click", showPoem);
+
+        function sendMessage() {
+            const userInput = document.getElementById("user-input").value.trim();
+            const chatBox = document.getElementById("chat-box");
+
+            if (!userInput) {
+                alert("请输入描述！");
+                return;
+            }
+
+            // 显示用户输入
+            const userMessage = document.createElement("div");
+            userMessage.className = "user-message";
+
+            const userAvatar = document.createElement("div");
+            userAvatar.className = "user-avatar";
+
+            const userMessageContent = document.createElement("div");
+            userMessageContent.className = "user-message-content";
+            userMessageContent.textContent = userInput;
+
+            userMessage.appendChild(userMessageContent);
+            userMessage.appendChild(userAvatar);
+            chatBox.appendChild(userMessage);
+
+            // 发送请求到后端
+            const formData = new FormData();
+            formData.append("message", userInput);
+
+            fetch("/synthesize", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || "服务器错误：" + response.status);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    // 处理关键词识别错误
+                    const botMessage = document.createElement("div");
+                    botMessage.className = "bot-message";
+
+                    const botAvatar = document.createElement("div");
+                    botAvatar.className = "bot-avatar";
+
+                    const botMessageContent = document.createElement("div");
+                    botMessageContent.className = "bot-message-content";
+                    botMessageContent.innerHTML = `
+                        <div>${data.error}</div>
+                    `;
+
+                    botMessage.appendChild(botAvatar);
+                    botMessage.appendChild(botMessageContent);
+                    chatBox.appendChild(botMessage);
+
+                    // 显示支持的关键词列表
+                    if (data.supported_keywords) {
+                        const keywordMessage = document.createElement("div");
+                        keywordMessage.className = "bot-message";
+
+                        const keywordContent = document.createElement("div");
+                        keywordContent.className = "bot-message-content";
+                        keywordContent.innerHTML = `
+                            <div style="margin-bottom: 8px;">支持的关键词：</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${data.supported_keywords.map(keyword =>
+                                    `<span style="
+                                        background: #e3f2fd;
+                                        padding: 4px 12px;
+                                        border-radius: 16px;
+                                        cursor: pointer;
+                                        transition: all 0.2s;
+                                    "
+                                    onclick="document.getElementById('user-input').value += '${keyword} '">
+                                        ${keyword}
+                                    </span>`
+                                ).join("")}
+                            </div>
+                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                提示：点击关键词可自动填入输入框
+                            </div>
+                        `;
+
+                        keywordMessage.appendChild(botAvatar.cloneNode());
+                        keywordMessage.appendChild(keywordContent);
+                        chatBox.appendChild(keywordMessage);
+                    }
+                } else {
+                    // 成功生成音频
+                    const botMessage = document.createElement("div");
+                    botMessage.className = "bot-message";
+
+                    const botAvatar = document.createElement("div");
+                    botAvatar.className = "bot-avatar";
+
+                    const botMessageContent = document.createElement("div");
+                    botMessageContent.className = "bot-message-content";
+                    botMessageContent.textContent = `音频已生成！}`;
+
+                    botMessage.appendChild(botAvatar);
+                    botMessage.appendChild(botMessageContent);
+                    chatBox.appendChild(botMessage);
+
+                    // 更新音频源
+                    const audioSource = document.getElementById("audio-source");
+                    const audioPlayer = document.getElementById("audio-player");
+                    const playButton = document.getElementById("play-audio-button");
+
+                    audioSource.src = data.audio_url;
+                    audioPlayer.load();
+                    playButton.disabled = false;
+
+                    // 尝试自动播放
+                    audioPlayer.play().catch(e => {
+                        console.log("自动播放被阻止");
+                    });
+                }
+
+                chatBox.scrollTop = chatBox.scrollHeight;
+            })
+            .catch(error => {
+                const errorMessage = document.createElement("div");
+                errorMessage.className = "bot-message";
+
+                const botAvatar = document.createElement("div");
+                botAvatar.className = "bot-avatar";
+
+                const errorMessageContent = document.createElement("div");
+                errorMessageContent.className = "bot-message-content";
+                errorMessageContent.textContent = error.message;
+
+                errorMessage.appendChild(botAvatar);
+                errorMessage.appendChild(errorMessageContent);
+                chatBox.appendChild(errorMessage);
+
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+
+            // 清空输入框
+            document.getElementById("user-input").value = "";
+        }
+
+        function returnToIndex() {
+            window.location.href = "{{ url_for('welcome') }}";
+        }
+    </script>
+</body>
+</html>

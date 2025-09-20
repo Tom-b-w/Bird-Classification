@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查看鸟类信息</title>
+</head>
+<body>
+    <h2>鸟类信息</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>纬度</th>
+                <th>经度</th>
+                <th>鸟的类型</th>
+                <th>音频文件</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+                <tr>
+                    <td>{{ record.id }}</td>
+                    <td>{{ record.lat }}</td>
+                    <td>{{ record.lon }}</td>
+                    <td>{{ record.bird_name }}</td>
+                    <td>{{ record.audio_file }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

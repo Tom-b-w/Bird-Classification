@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bird Sound Recognition</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <style>
+      /* General Body Styling */
+      body {
+        background: url("{{ url_for('static', filename='images/bg_main.jpg') }}")
+          no-repeat center fixed;
+        background-size: cover;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #333;
+        font-family: 'Arial', sans-serif;
+        overflow: hidden;
+      }
+
+      /* Container Styling */
+      .container {
+        background: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
+        padding: 40px 50px;
+        margin: 15px auto;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        animation: fadeIn 1s ease-out;
+      }
+
+      /* Fade-in Animation */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* Heading Styling */
+      h1 {
+        margin-bottom: 20px;
+        color: #4caf50;
+        font-size: 2.5em;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      /* Paragraph Styling */
+      p {
+        font-size: 1.2em;
+        margin-bottom: 30px;
+        color: #555;
+      }
+
+      /* File Input Styling */
+      input[type="file"] {
+        display: block;
+        margin: 20px auto;
+        font-size: 1.1em;
+        padding: 12px;
+        border: 2px dashed #ddd;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color 0.3s ease, background-color 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      input[type="file"]:hover {
+        border-color: #4caf50;
+        background-color: rgba(76, 175, 80, 0.1);
+      }
+
+      /* Bird Count Selection Styling */
+      .bird-count-section {
+        margin: 25px 0;
+        padding: 20px;
+        background: rgba(76, 175, 80, 0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(76, 175, 80, 0.2);
+      }
+
+      .bird-count-section h3 {
+        margin-bottom: 15px;
+        color: #4caf50;
+        font-size: 1.3em;
+      }
+
+      .bird-count-options {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .bird-count-option {
+        position: relative;
+      }
+
+      .bird-count-option input[type="radio"] {
+        display: none;
+      }
+
+      .bird-count-option label {
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: #f5f5f5;
+        border: 2px solid #ddd;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 1.1em;
+        transition: all 0.3s ease;
+        min-width: 80px;
+        text-align: center;
+      }
+
+      .bird-count-option input[type="radio"]:checked + label {
+        background-color: #4caf50;
+        color: white;
+        border-color: #4caf50;
+        transform: scale(1.05);
+        box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+      }
+
+      .bird-count-option label:hover {
+        border-color: #4caf50;
+        background-color: rgba(76, 175, 80, 0.1);
+      }
+
+      /* Submit Button Styling */
+      input[type="submit"] {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1.2em;
+        transition: background-color 0.3s ease, transform 0.3s ease;
+        margin-top: 20px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      input[type="submit"]:hover {
+        background-color: #45a049;
+        transform: translateY(-3px);
+      }
+
+      input[type="submit"]:active {
+        background-color: #3e8e41;
+        transform: translateY(1px);
+      }
+
+      input[type="submit"]:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Poem Styling */
+      .poem {
+        position: absolute;
+        font-size: 24px;
+        opacity: 0;
+        transition: opacity 1s ease-out, transform 1s ease-out;
+        pointer-events: none;
+        z-index: 999;
+      }
+
+      /* Error message styling */
+      .error-message {
+        background-color: #ffe6e6;
+        color: #d63031;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        display: none;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2em;
+        }
+        .container {
+          padding: 20px 30px;
+        }
+        input[type="submit"] {
+          font-size: 1.1em;
+          padding: 12px 20px;
+        }
+        .bird-count-options {
+          flex-direction: column;
+          align-items: center;
+        }
+        .bird-count-option label {
+          min-width: 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>鸟鸣声识别</h1>
+      <p>上传音频文件（支持格式：.mp3, .ogg, .wav）</p>
+      <form action="/predict" method="post" enctype="multipart/form-data" id="predictionForm">
+        <input type="file" name="file" accept=".ogg,.wav,.mp3" required />
+
+        <div class="bird-count-section">
+          <h3>请选择音频中包含的鸟类数量</h3>
+          <div class="bird-count-options">
+            <div class="bird-count-option">
+              <input type="radio" id="count-1" name="bird_count" value="1" checked>
+              <label for="count-1">1种</label>
+            </div>
+            <div class="bird-count-option">
+              <input type="radio" id="count-2" name="bird_count" value="2">
+              <label for="count-2">2种</label>
+            </div>
+            <div class="bird-count-option">
+              <input type="radio" id="count-3" name="bird_count" value="3">
+              <label for="count-3">3种</label>
+            </div>
+            <div class="bird-count-option">
+              <input type="radio" id="count-more" name="bird_count" value="more">
+              <label for="count-more">更多</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <input type="submit" value="GO!" id="submitBtn" />
+      </form>
+    </div>
+
+    <script>
+      // Prepare 30 bird-related poems
+      const poems = [
+        "两个黄鹂鸣翠柳，一行白鹭上青天。",
+        "月出惊山鸟，时鸣春涧中。",
+        "千山鸟飞绝，万径人踪灭。",
+        "感时花溅泪，恨别鸟惊心。",
+        "留连戏蝶时时舞，自在娇莺恰恰啼。",
+        "荡胸生曾云，决眦入归鸟。",
+        "山气日夕佳，飞鸟相与还。",
+        "众鸟高飞尽，孤云独去闲。",
+        "鸟宿池边树，僧敲月下门。",
+        "驱鸡上树木，始闻叩柴扉。",
+        "吊影分为千里雁，辞根散作九秋蓬。",
+        "几处早莺争暖树，谁家新燕啄春泥。",
+        "孤云将野鹤，岂向人间住。",
+        "蝉噪林逾静，鸟鸣山更幽。",
+        "白发悲花落，青云羡鸟飞。",
+        "鸟向平芜远近，人随流水东西。",
+        "落花人独立，微雨燕双飞。",
+        "芳树无人花自落，春山一路鸟空啼。",
+        "春眠不觉晓，处处闻啼鸟。",
+        "鸟宿池边树，僧敲月下门。",
+        "江碧鸟逾白，山青花欲燃。",
+        "感时花溅泪，恨别鸟惊心。",
+        "风翻白浪涌，雨骤群鸟喧。",
+        "众鸟高飞尽，孤云独去闲。",
+        "月出惊山鸟，时鸣春涧中。",
+        "千山鸟飞绝，万径人踪灭。",
+        "留连戏蝶时时舞，自在娇莺恰恰啼。",
+        "飘飘何所似，天地一沙鸥。",
+        "池塘生春草，园柳变鸣禽。",
+        "草长莺飞二月天，拂堤杨柳醉春烟。"
+      ];
+
+      // Already displayed poem indices
+      let shownIndices = [];
+
+      // Randomly select a poem that has not been shown before
+      function getRandomPoem() {
+        if (shownIndices.length === poems.length) {
+          // Reset if all poems have been shown
+          shownIndices = [];
+        }
+
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * poems.length);
+        } while (shownIndices.includes(randomIndex));
+
+        shownIndices.push(randomIndex);
+        return poems[randomIndex];
+      }
+
+      // Show the selected poem and animate it
+      function showPoem(event) {
+        if (
+          event.target.type === "submit" ||
+          event.target.type === "file" ||
+          event.target.type === "radio" ||
+          event.target.tagName === "LABEL"
+        ) {
+          return;
+        }
+
+        // Create a new div element to show the poem
+        const poemElement = document.createElement("div");
+        poemElement.className = "poem";
+        document.body.appendChild(poemElement);
+
+        // Randomly select a poem
+        const randomPoem = getRandomPoem();
+
+        // Generate a random high-saturation color for the text
+        const hue = Math.floor(Math.random() * 360);
+        poemElement.style.color = `hsl(${hue}, 80%, 60%)`;
+
+        // Set the position based on the mouse click
+        poemElement.style.left = `${event.clientX}px`;
+        poemElement.style.top = `${event.clientY}px`;
+
+        // Display the poem
+        poemElement.textContent = randomPoem;
+        poemElement.style.opacity = "1";
+        poemElement.style.transform = "translateY(0)";
+
+        // Start disappearing animation after 0.9 seconds
+        setTimeout(() => {
+          poemElement.style.opacity = "0";
+          poemElement.style.transform = "translateY(20px)";
+        }, 900);
+
+        // Remove the element after animation completes
+        setTimeout(() => {
+          document.body.removeChild(poemElement);
+        }, 1900);
+      }
+
+      // Form validation
+      function validateForm() {
+        const fileInput = document.querySelector('input[type="file"]');
+        const birdCountInput = document.querySelector('input[name="bird_count"]:checked');
+        const errorMessage = document.getElementById('errorMessage');
+
+        errorMessage.style.display = 'none';
+
+        if (!fileInput.files.length) {
+          errorMessage.textContent = '请选择音频文件';
+          errorMessage.style.display = 'block';
+          return false;
+        }
+
+        if (!birdCountInput) {
+          errorMessage.textContent = '请选择鸟类数量';
+          errorMessage.style.display = 'block';
+          return false;
+        }
+
+        return true;
+      }
+
+      // Bind the click event
+      document.body.addEventListener("click", showPoem);
+
+      // Form submit validation
+      document.getElementById('predictionForm').addEventListener('submit', function(e) {
+        if (!validateForm()) {
+          e.preventDefault();
+        } else {
+          // Show loading state
+          const submitBtn = document.getElementById('submitBtn');
+          submitBtn.value = '识别中...';
+          submitBtn.disabled = true;
+        }
+      });
+
+      // Add visual feedback for radio button selection
+      document.querySelectorAll('input[name="bird_count"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          // Remove visual feedback from all options
+          document.querySelectorAll('.bird-count-option label').forEach(label => {
+            label.style.transform = 'scale(1)';
+          });
+
+          // Add visual feedback to selected option
+          if (this.checked) {
+            this.nextElementSibling.style.transform = 'scale(1.05)';
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
