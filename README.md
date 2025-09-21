@@ -63,6 +63,3 @@
 ## 致谢
 项目整合了开源库：librosa、transformers、pydub、torch 等。感谢所有贡献的工具与模型作者。
 
----
-
-如果你希望我把 README 翻译成英文版、生成 `requirements.txt`、或把 README 内容写进仓库根目录的其他格式（例如 `README_.rst`），告诉我下一步即可。 
