@@ -215,8 +215,8 @@ def recognize_multiple_birds(audio_file_path, model, feature_extractor, threshol
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads')
 SMTP_SERVER = 'smtp.qq.com'
 SMTP_PORT = 465
-EMAIL_SENDER = '2437476553@qq.com'
-EMAIL_PASSWORD = 'dtaapibzigrzeada'  # 注意：是授权码不是登录密码！
+EMAIL_SENDER = 'your-email'
+EMAIL_PASSWORD = '**********'  # 注意：是授权码不是登录密码！
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///default.db'
 mail = Mail(app)
